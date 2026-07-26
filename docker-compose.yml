@@ -1,0 +1,59 @@
+# =====================================================================
+#  単一マシン用 A/D 競技サービス スタック
+#  （Packer/Ansible/Terraform + 校内ハイパーバイザの「代用案」）
+#
+#  本番はチームごとに同一構成の VM を IaC で一斉配布するが、単独では
+#  ハイパーバイザ基盤が無いため、docker-compose で 1 チーム分の
+#  サービス群 + SLA チェッカーを 1 マシン上に立ち上げて A/D ループを再現する。
+#
+#  前提: score-server / CTFd が別 compose で起動済み（score-server は :8001）。
+#  起動: docker compose up --build
+# =====================================================================
+services:
+  # --- 競技側サービス（脆弱性入り）------------------------------------
+  service-a:
+    build: ./service-a
+    ports:
+      - "8101:8101"            # 公開 API（攻撃対象）
+    environment:
+      FLAG_FILE: /flags/service-a.txt
+      PORT: "8101"
+    volumes:
+      - ./flags:/flags         # ローテーターが書き込む FLAG を共有
+    # 9200（内部 ES 相当）は publish しない = loopback のみ → SSRF が必須になる
+
+  service-b:
+    build: ./service-b
+    ports:
+      - "8102:8102"            # 公開 API（攻撃対象）
+    environment:
+      FLAG_FILE: /flags/service-b.txt
+      PORT: "8102"
+    volumes:
+      - ./flags:/flags
+
+  service-c:
+    build: ./service-c
+    ports:
+      - "2222:22"              # SSH（攻撃対象。ログイン後に権限昇格）
+    environment:
+      FLAG_FILE: /flags/service-c.txt
+    volumes:
+      - ./flags:/flags
+
+  # --- SLA 死活監視チェッカー -----------------------------------------
+  sla-checker:
+    build: ../sla-checker
+    depends_on:
+      - service-a
+      - service-b
+      - service-c
+    environment:
+      SCORE_SERVER_URL: http://host.docker.internal:8001
+      CHECK_INTERVAL: "30"
+      SERVICE_A_URL: http://service-a:8101/health
+      SERVICE_B_URL: http://service-b:8102/health
+      SERVICE_C_HOST: service-c                       # SSH は TCP+バナーで死活確認
+      SERVICE_C_PORT: "22"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"          # Linux で score-server へ到達

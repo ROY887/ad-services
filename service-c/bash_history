@@ -1,0 +1,7 @@
+ls -la
+cat /etc/passwd
+tail -n 50 /var/log/syslog
+sudo /usr/bin/find /var/log -name "*.log" -mtime -1
+sudo -l
+df -h
+whoami

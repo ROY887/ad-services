@@ -30,9 +30,9 @@ docker-compose でその代用を行う。
 
 | 機能 | 本来の担当 | 状態 | 単独構築の扱い |
 | --- | --- | --- | --- |
-| スコア管理 (score-server) | 神田 | ✅完成 | `~/score-server` |
-| FLAG ローテーション | 居林 | ✅存在 | `~/engineering-design-5th-grade` |
-| **SLA 死活監視** | ニノ方 | ✅**新規自作** | `~/sla-checker` |
+| スコア管理 (score-server) |  ✅完成 | `~/score-server` |
+| FLAG ローテーション |  ✅存在 | `~/engineering-design-5th-grade` |
+| **SLA 死活監視** |  ✅**新規自作** | `~/sla-checker` |
 | 脆弱サービス | 実験実習班 | ⚠️ **3 種を自作** | `./service-a`（SSRF）/ `./service-b`（Mass Assignment+IDOR＋バックアップ漏洩）/ `./service-c`（sudo find 権限昇格・SSH）。他は下記代用方針 |
 | VM 自動配布 (IaC) | インフラ班 | ✗ 単独不可 | **docker-compose で代用**（本ファイル） |
 
