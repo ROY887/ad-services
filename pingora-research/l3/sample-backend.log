@@ -1,0 +1,9 @@
+BACKEND listening :8899
+BACKEND_REQ #1 method="POST" path="/" cl="" te="" bodylen=0 body=""
+BACKEND_REQ #2 method="POST" path="/" cl="" te="" bodylen=61 body="GET /SMUGGLED HTTP/1.1\r\nHost: x\r\nContent-Length: 0\r\n\r\n\r\n0\r\n\r\n"
+BACKEND_REQ #3 method="POST" path="/" cl="" te="" bodylen=61 body="GET /SMUGGLED HTTP/1.1\r\nHost: x\r\nContent-Length: 0\r\n\r\n\r\n0\r\n\r\n"
+BACKEND_REQ #4 method="POST" path="/" cl="" te="" bodylen=61 body="GET /SMUGGLED HTTP/1.1\r\nHost: x\r\nContent-Length: 0\r\n\r\n\r\n0\r\n\r\n"
+BACKEND_REQ #5 method="POST" path="/" cl="00" te="" bodylen=0 body=""
+BACKEND_REQ #6 method="GET" path="/SMUGGLED" cl="0" te="" bodylen=0 body=""
+BACKEND_REQ #7 method="GET" path="/first" cl="" te="" bodylen=0 body=""
+BACKEND_REQ #8 method="GET" path="/SMUGGLED" cl="0" te="" bodylen=0 body=""
