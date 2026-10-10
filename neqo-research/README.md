@@ -86,11 +86,37 @@ neqo は Mozilla が CI で定期ファジングしている（`.github/workflow
 2. **状態付き（stateful）ハーネス**: 既存 12 個は単発デコードが中心。ハンドシェイク完了後の
    フレーム列や、複数ストリーム・QPACK 動的テーブルをまたぐ状態を生成し、メモリ増加や
    パニックを監視（quiche の CRYPTO フラッド CVE と同系統）。これは neqo に未搭載の切り口。
-3. **Mozilla 報奨金の scope 確認**: neqo は「現行 Firefox に載っている版」が対象
-   （`../pingora-research/HANDOFF.md` の調査および Mozilla Bug Bounty FAQ 参照）。
-   スタンドアロンのライブラリ単体は対象外の可能性があるため、**報告前に対象範囲を要確認**。
+3. **差分/状態付きハーネスを neqo に PR 提案**: 当たらなくても、作ったハーネスは
+   OSS 貢献（実績・評判）になる。
 
-## 6. 注意
+## 6. 報奨金スコープ（確認済み / 2026-10-10）
+
+neqo の公式 `SECURITY.md` で**確認済み（推測ではない）**。結論: **neqo は Mozilla の
+報奨金の対象**。以前の「スタンドアロン単体は対象外かも」という懸念は neqo については否定された。
+
+`SECURITY.md` 原文: *"Mozilla operates a bug bounty program, for which this project is
+eligible."*
+
+| 項目 | 内容 |
+|---|---|
+| 対象か | **対象（eligible）** |
+| 対象バージョン | **Firefox 搭載版**（release / beta / central / ESR 115）に入っている neqo、または `main` 最新 |
+| バージョン確認 | Firefox の `third_party/rust/neqo-transport/Cargo.toml` の版 = この repo の tag |
+| 報告先 | **Bugzilla の `Core :: Networking`**（HackerOne ではない） |
+| 必須操作 | 報告時に **"Many users could be harmed by this security problem"** のチェックを必ずオン（メモリ安全性・クラッシュ・競合・機密情報の扱いを含む） |
+
+注意・未確定:
+- **報告先は Bugzilla であり HackerOne ではない**。Mozilla の HackerOne *Web* プログラムは
+  2026-09-11 から新規受付停止中（再開予定 Q1 2027）だが、neqo は Bugzilla 系なので無関係。
+- **報奨金の金額**と、QUIC/ネットワーク系が「Highest Impact / Sandbox Escape」の重点に入るかは
+  `https://www.mozilla.org/en-US/security/bug-bounty/` と client-bug-bounty ページ参照。
+  本セッションの環境は **mozilla.org が egress ブロック**で未取得 → egress 制限の無い環境
+  （Warp 等）で金額を要確認。2026-03 の方針更新で「Highest Impact は親プロセス侵害に限定」
+  「actionable な報告を重視」との情報あり（要一次確認）。
+- 報奨金価値を最大化するなら **Firefox 搭載版の neqo に存在するバグ**を狙う（`main` 限定の
+  新規コードより確実）。
+
+## 7. 注意
 
 - 検証は**自分でビルドしたバイナリに対してのみ**。外部サーバへ攻撃入力を送らない。
 - 見つけたら公開 Issue ではなく Mozilla へ非公開報告（`SECURITY.md` 参照）。
