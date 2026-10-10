@@ -53,6 +53,42 @@ bash run_l3.sh 1   # pipelining ON
   「バックエンドが解釈したリクエスト数/パス」を自動 diff する（HTTP Garden 方式）。
   nginx / Apache / Node など**さらに別のパーサ**を増やすほど desync の芽を拾いやすい。
 
+## 結果（第2ラウンド・2026-10-10 / pingora 0.9.0 `702f690` / Go net/http）
+
+`server.rs` / `body.rs` / `common.rs` のソース監査で挙げた「厳密 RFC-9112 バックエンドと
+食い違い得る」具体箇所を、的を絞った 6 ベクタとして追加（計14）。各ベクタの主リクエストパスを
+`/<label>` に一意化し、`/SMUGGLED` を仕込んで**どのベクタが昇格させたか**を 1:1 で対応付けた。
+`driver.py`（labeled 版）+ `run_ro.sh`（`wait` ハング回避・`timeout` 付き堅牢版）で実行。
+
+追加ベクタと監査仮説:
+- `bare_lf_end` / `bare_lf_cl_te` / `escape_retry_lf` — bare-LF 行終端（httparse は受理、pingora の
+  URI エスケープ detach は `b"\r\n\r\n"` 直値を探す）の境界ズレ。
+- `te_identity_first` — `is_chunked_encoding_from_headers` が**最後の TE 行**だけを見る点。
+- `cl_plus` — `buf_to_content_length` が `i64::parse` で**先頭 `+` を受理**する点。
+- `chunk_bare_cr` — chunk-size 行の bare-CR。
+
+**判定: desync / スマグリングは検出されず（両パイプラインモード）。** 内訳:
+
+| 挙動 | ベクタ | 判定 |
+|---|---|---|
+| **400 拒否**（バックエンド未到達） | `te_space`(`TE :`) / `te_double`(最終TE=cow) / **`cl_plus`(`CL: +54`)** | 正しく拒否 |
+| コネクション close・overread 破棄 | `cl_te` / `bare_lf_cl_te`（CL+TE 併存） | 正しく close |
+| SMUG を不活性な**本体**として転送 | `te_cl` / `te_tab` / `chunk_ext` / `te_identity_first` | 本体化、昇格せず |
+| 空本体(CL:0/00)＋**正当な**2本目として転送 | `cl_zeros` / `pipelined_control` / `bare_lf_end` / `escape_retry_lf` | pingora と Go が**同一境界で一致** |
+| bare-CR chunk を処理し空本体 | `chunk_bare_cr` | 昇格せず |
+
+重要な確認: 監査で疑った **`i64::parse` の先頭 `+` 受理は到達不能**だった
+（`validate_content_length`→`from_digits` が framing 前に `+` を弾く）。理論上の差分候補が
+実測で否定された好例。素朴なオラクル（「ON で `/SMUGGLED` 4件 = desync」）は**誤り**で、
+4件はすべて空本体後の正当なパイプライン 2本目であり、両パーサが境界を一致させている。
+
+### 監査で見つけた「寛容だが悪用不能」な観察（防御的ハードニング候補・脆弱性ではない）
+- `is_upgrade_req` は `Connection: upgrade` トークンを要求しない（`common.rs:190`）。
+- `is_upgrade_resp` は 101 のみで応答の Upgrade/Connection を検証しない（`common.rs:206`、コメントで明言）。
+- `is_chunked_encoding_from_headers` は最後の TE 行の最後のトークンのみ評価（`common.rs:168`）。
+いずれも nginx 互換の設計判断で、上記の実地試験では desync に至らなかった。バウンティ対象の
+脆弱性としては**報告しない**（偽陽性を避ける）。OSS 側で defense-in-depth 提案として触れる余地はある。
+
 ## 注意
 - すべて自分のマシン上のプロセス同士。外部へは一切送らない。
 - 本物の desync を見つけたら HackerOne の Cloudflare プログラムへ非公開報告（scope 要確認）。
