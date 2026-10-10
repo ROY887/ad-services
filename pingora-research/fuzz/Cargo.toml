@@ -1,0 +1,32 @@
+[package]
+name = "pingora-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+tokio = { version = "1", features = ["rt", "io-util", "macros"] }
+bytes = "1"
+httparse = "1"
+pingora-core = { path = "../pingora-core" }
+
+[[bin]]
+name = "h1_request"
+path = "fuzz_targets/h1_request.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "h1_differential"
+path = "fuzz_targets/h1_differential.rs"
+test = false
+doc = false
+bench = false
+
+# detach from the pingora workspace
+[workspace]
