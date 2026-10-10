@@ -89,13 +89,16 @@ fuzz_target!(|input: &[u8]| {
         return; // reference doesn't accept / is a skipped case
     };
 
-    // Build the pingora input: the header section, then (for the CL oracle) a
-    // generous run of filler so pingora can always read its full intended body
-    // without hitting EOF (EOF truncation would be noise, not a desync).
+    // The body-length oracle is only sound when we can actually supply the
+    // whole body; for a huge Content-Length we cannot, and a premature EOF is
+    // noise, not a desync. So only exercise it when CL fits this cap, and feed
+    // exactly CL + a small sentinel so pingora must stop precisely at CL.
+    const MAX_CL: u64 = 1 << 20; // 1 MiB
+    let cl_oracle = rv.cl_body.filter(|&n| n <= MAX_CL);
+
     let mut pinput = input[..rv.hdr_len].to_vec();
-    if let Some(n) = rv.cl_body {
-        let fill = (n as usize).saturating_add(64).min(1 << 16);
-        pinput.resize(rv.hdr_len + fill, b'A');
+    if let Some(n) = cl_oracle {
+        pinput.resize(rv.hdr_len + n as usize + 16, b'A');
     }
     let stream = Cursor::new(pinput);
 
@@ -125,7 +128,7 @@ fuzz_target!(|input: &[u8]| {
         // Count the body bytes pingora actually consumes and compare to the
         // reference Content-Length. A mismatch means proxy and backend place
         // the next request boundary differently -> request-smuggling primitive.
-        if let Some(ref_cl) = rv.cl_body {
+        if let Some(ref_cl) = cl_oracle {
             let mut consumed: u64 = 0;
             let mut guard = 0u32;
             loop {
