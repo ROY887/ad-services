@@ -14,6 +14,7 @@ pingora には fuzz ターゲットが無いため、作成した HTTP/1 ファ�
 pingora の CONTRIBUTING は「**非自明な PR はまず issue**」と明記。順序:
 
 1. `ISSUE.md` の内容で cloudflare/pingora に issue を起票。
+   → **起票済み: https://github.com/cloudflare/pingora/issues/1049（2026-10-10）**
 2. メンテナが方針 OK を返したら:
    - cloudflare/pingora を自分の GitHub にフォーク。
    - フォークに `fuzz/` を追加（この `contribution/fuzz/` をリポジトリ root の `fuzz/` へ）。

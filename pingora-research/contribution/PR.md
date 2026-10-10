@@ -10,7 +10,7 @@
 
 **Body:**
 
-Closes #<ISSUE_NUMBER>.
+Closes #1049.
 
 Adds a `fuzz/` cargo-fuzz crate with two targets for
 `protocols::http::v1::server::HttpSession`, which currently has no fuzzing
