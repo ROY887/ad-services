@@ -45,17 +45,35 @@ cargo +nightly fuzz run --dev h1_request      -- -max_total_time=3600
 `fuzz/Cargo.toml` は `pingora-core` を `path = "../pingora-core"` で参照し、`[workspace]` 空表で
 pingora ワークスペースから切り離している。
 
-## これまでの結果（短時間走行）
+## 結果と知見（2026-10-10 走行）
 
 検証環境: nightly rustc 1.101 / cargo-fuzz 0.13.2 / pingora 0.9.0
 
-- `h1_request`: 212,901 runs / クラッシュなし
-- `h1_differential`（ヘッダ境界のみ版）: 831,264 runs / 食い違いなし
-- 本体長オラクル追加後も短時間では食い違いなし
+| ターゲット | 実行回数 | 結果 |
+|---|---|---|
+| `h1_request`（堅牢性） | 累計 ~126万 runs | クラッシュ・ハング・overread **なし** |
+| `h1_differential`（ヘッダ境界＋CL本体長） | 累計 ~430万 runs | 真の食い違い **なし**（偽陽性2件は下記のとおり切り分け済み） |
 
-→ pingora 0.9.0 の H1 パーサは短時間ファジングでは堅牢。**本命は長時間走行 + 差分対象の
-拡張**（quiche/nginx との三者差分、パイプライン prefix をまたぐ状態、chunked の実装差）。
-詳細な方向性は `../HANDOFF.md` 参照。
+**切り分けた偽陽性（いずれも pingora のバグではない）:**
+1. `tokio_test::io::Mock` が未消費 read で drop 時に panic → ストリームを `std::io::Cursor` に変更して解消。
+2. 本体長オラクルで巨大 Content-Length（≈1.8e19）に filler を供給しきれず EOF → CL が供給可能サイズのときだけ検証するよう修正。
+3. 試作した chunked 差分（`h1_chunked`、**撤去済み**）が `5;ex\r=1\r\n...`（chunk-ext 中の裸CR）で差分検出 → 調査の結果、**私の手書き参照デコーダが `httparse` 非準拠に寛容**だっただけ。`httparse::parse_chunk_size` はこの入力を `InvalidChunkSize` で拒否し、pingora も同様に拒否していた。
+
+### 最重要の構造的知見: なぜ in-process 差分では当たらないか
+
+pingora は **ヘッダもチャンクサイズも `httparse` で解析**している（`body.rs` の
+`httparse::parse_chunk_size`、ヘッダは `httparse::Request`）。スマグリングの比較相手として
+現実的なバックエンド実装（hyper）**も httparse を使う**。したがってプロセス内で独立参照と
+比較しても:
+
+- 参照が httparse と一致 → pingora とも一致 → **差分ゼロ（シグナルなし）**
+- 参照が httparse と相違 → それは**参照側のバグ＝偽陽性**
+
+**結論: pingora の本物の HTTP/1 スマグリングを探すなら、別パーサを使うバックエンド
+（nginx / Go net/http / Apache）との「実地比較（L3）」が必須。** 単一プロセス内の差分や
+素のファジングでは、pingora が httparse に委譲している限り新規バグは出にくい。
+`h1_request`/`h1_differential` は OSS 貢献（pingora は fuzz 同梱ゼロ）としては有効だが、
+報酬バグの発見器としては上限がある。次アクションは `../HANDOFF.md` の L3 docker 構成。
 
 ## 注意
 
