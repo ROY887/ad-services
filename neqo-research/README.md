@@ -108,11 +108,28 @@ eligible."*
 注意・未確定:
 - **報告先は Bugzilla であり HackerOne ではない**。Mozilla の HackerOne *Web* プログラムは
   2026-09-11 から新規受付停止中（再開予定 Q1 2027）だが、neqo は Bugzilla 系なので無関係。
-- **報奨金の金額**と、QUIC/ネットワーク系が「Highest Impact / Sandbox Escape」の重点に入るかは
-  `https://www.mozilla.org/en-US/security/bug-bounty/` と client-bug-bounty ページ参照。
-  本セッションの環境は **mozilla.org が egress ブロック**で未取得 → egress 制限の無い環境
-  （Warp 等）で金額を要確認。2026-03 の方針更新で「Highest Impact は親プロセス侵害に限定」
-  「actionable な報告を重視」との情報あり（要一次確認）。
+
+### 金額（2026-10 時点 / 二次情報ベース・要一次確認）
+
+primary（mozilla.org/security/client-bug-bounty/）は本セッション環境では **egress 遮断**で
+未取得。以下は TechCrunch(2026-05) 等の二次情報による。正確な現行 tier 表は egress 制限の
+無い環境（Warp 等）で要確認。
+
+| tier | 上限(USD) | 該当例 |
+|---|---|---|
+| Highest Impact | **$20,000** | サンドボックス脱出、WebExtension インストールプロンプト回避 |
+| Higher Impact | ~$10,000 | UXSS など |
+| High Impact | ~$3,000 | その他の高/重大（下位は二次情報で表記崩れ＝目安） |
+
+- 2020年の $8,000〜$10,000 は旧値で更新済み。現行最高は $20,000。
+
+### neqo の収益性に関する重要な但し書き（正直な評価）
+
+- **2026-03 方針更新で「Highest Impact は親プロセス(parent process)の侵害に限定」**。
+- **neqo は Firefox の socket process（サンドボックス内）で動く**。親プロセスではない。
+- よって **neqo 単体のメモリ安全性バグ/クラッシュ/解釈差だけでは最高額 $20,000 tier に
+  届きにくい**。サンドボックス脱出や親プロセス侵害まで繋げて初めて最高額圏。
+  neqo 単体バグは低め tier か重大度次第になる見込み。
 - 報奨金価値を最大化するなら **Firefox 搭載版の neqo に存在するバグ**を狙う（`main` 限定の
   新規コードより確実）。
 
